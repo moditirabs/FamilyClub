@@ -5,15 +5,25 @@ export interface Member {
   role: 'Admin' | 'Member';
 }
 
+export interface FinancialMember {
+  id: string;
+  name: string;
+  previousArrears: number;
+  contributionDue: number;
+}
+
 export interface Transaction {
   id: string;
   memberId: string;
   memberName: string;
   date: string;
-  amount: number;
-  type: 'Cash' | 'EFT';
+  timestamp: string; // ISO String YYYY-MM-DDTHH:mm:ss.sssZ
+  cashPaid: number;
+  eftPaid: number;
+  totalPaid: number;
+  previousArrears: number; // Snapshot at time of payment
+  currentArrears: number; // Result after payment
   category: 'Contribution' | 'Fine' | 'Other';
-  status: 'Paid' | 'Pending';
 }
 
 export interface Meeting {

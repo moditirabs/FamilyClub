@@ -305,35 +305,37 @@ export const BudgetManager: React.FC = () => {
         {/* 2. CENTER SECTION: Interactive Pie Chart */}
         <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-[350px] flex flex-col">
           <h3 className="text-lg font-semibold mb-4 text-slate-800">Income vs Expenses</h3>
-          <div className="flex-1 w-full min-h-0 min-w-0" ref={chartRef}>
+          <div className="flex-1 relative min-h-0" ref={chartRef}>
              {totalIncome === 0 && totalExpenses === 0 ? (
                  <div className="h-full flex items-center justify-center text-slate-400">
                      No data available
                  </div>
              ) : (
-                <ResponsiveContainer width="99%" height="100%">
-                    <PieChart>
-                    <Pie
-                        data={chartData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={80}
-                        outerRadius={110}
-                        fill="#8884d8"
-                        paddingAngle={5}
-                        dataKey="value"
-                    >
-                        {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                    </Pie>
-                    <Tooltip 
-                        formatter={(value: number) => `R${value.toLocaleString()}`}
-                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    />
-                    <Legend verticalAlign="middle" align="right" layout="vertical" iconType="circle" />
-                    </PieChart>
-                </ResponsiveContainer>
+                <div className="absolute inset-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                        <Pie
+                            data={chartData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={80}
+                            outerRadius={110}
+                            fill="#8884d8"
+                            paddingAngle={5}
+                            dataKey="value"
+                        >
+                            {chartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                        </Pie>
+                        <Tooltip 
+                            formatter={(value: number) => `R${value.toLocaleString()}`}
+                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        />
+                        <Legend verticalAlign="middle" align="right" layout="vertical" iconType="circle" />
+                        </PieChart>
+                    </ResponsiveContainer>
+                </div>
              )}
           </div>
         </div>

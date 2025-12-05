@@ -5,13 +5,91 @@ import { MinutesManager } from './components/MinutesManager';
 import { DocumentAnalyzer } from './components/DocumentAnalyzer';
 import { BudgetManager } from './components/BudgetManager';
 import { AIChat } from './components/AIChat';
-import { ViewState } from './types';
+import { ViewState, Transaction, FinancialMember } from './types';
 
 function App() {
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  // State to track next meeting details across the app
   const [nextMeeting, setNextMeeting] = useState("The Smiths Home, Oct 24, 14:00 PM");
+
+  // Mock Database - In a real app this would come from an API/Google Sheets
+  const [members, setMembers] = useState<FinancialMember[]>([
+    { id: '1', name: 'Bafana Kekana', previousArrears: 0, contributionDue: 500 },
+    { id: '2', name: 'Steve Kgamane', previousArrears: 0, contributionDue: 500 },
+    { id: '3', name: 'Mokgoshi Kekana', previousArrears: 0, contributionDue: 500 },
+    { id: '4', name: 'Columbus Kekana', previousArrears: 0, contributionDue: 500 },
+    { id: '5', name: 'Archie Poto', previousArrears: 0, contributionDue: 500 },
+    { id: '6', name: 'John Rabalago', previousArrears: 0, contributionDue: 500 },
+    { id: '7', name: 'Darlington Masalesa', previousArrears: 0, contributionDue: 500 },
+    { id: '8', name: 'Kamogelo Kekana', previousArrears: 0, contributionDue: 500 },
+    { id: '9', name: 'Lucas Lekgoathi', previousArrears: 0, contributionDue: 500 },
+    { id: '10', name: 'Bongani Maphoso', previousArrears: 0, contributionDue: 500 },
+    { id: '11', name: 'Lucas Kekana', previousArrears: 0, contributionDue: 500 },
+    { id: '12', name: 'Thatego Themane', previousArrears: 0, contributionDue: 500 },
+    { id: '13', name: 'Klaas Legoabe', previousArrears: 0, contributionDue: 500 },
+    { id: '14', name: 'Oupa Tladi', previousArrears: 0, contributionDue: 500 },
+    { id: '15', name: 'James Kekana', previousArrears: 0, contributionDue: 500 },
+    { id: '16', name: 'Moditi Rabalao', previousArrears: 0, contributionDue: 500 },
+    { id: '17', name: 'Shakes Kekana', previousArrears: 0, contributionDue: 500 },
+    { id: '18', name: 'Ephraim Rabalao', previousArrears: 0, contributionDue: 500 },
+    { id: '19', name: 'Joshua Kekana', previousArrears: 0, contributionDue: 500 },
+  ]);
+
+  const [transactions, setTransactions] = useState<Transaction[]>([
+    { 
+      id: '101', memberId: '1', memberName: 'Bafana Kekana', date: '2023-10-01', timestamp: '2023-10-01T10:00:00.000Z',
+      cashPaid: 0, eftPaid: 500, totalPaid: 500, previousArrears: 0, currentArrears: 0, category: 'Contribution' 
+    }
+  ]);
+
+  // Derived Financial Stats
+  const totalCollected = transactions.reduce((acc, curr) => acc + curr.totalPaid, 0);
+  const totalArrears = members.reduce((acc, curr) => acc + curr.previousArrears, 0); 
+  const activeMembers = members.length;
+  // Calculate collection rate (mock logic for demo)
+  const collectionRate = Math.round((transactions.length / members.length) * 100) || 0;
+
+  const financeData = {
+    totalCollected,
+    totalArrears,
+    activeMembers,
+    collectionRate,
+    transactions,
+    members
+  };
+
+  const handleRecordPayment = (newTransaction: Transaction) => {
+    // 1. Add Transaction
+    setTransactions([newTransaction, ...transactions]);
+
+    // 2. Update Member's Arrears (Optimistic Update)
+    setMembers(prevMembers => prevMembers.map(m => {
+      if (m.id === newTransaction.memberId) {
+        return {
+          ...m,
+          previousArrears: newTransaction.currentArrears // The new ending balance becomes the state
+        };
+      }
+      return m;
+    }));
+  };
+
+  const handleAddMember = (name: string) => {
+    const newMember: FinancialMember = {
+      id: Date.now().toString(),
+      name,
+      previousArrears: 0,
+      contributionDue: 500
+    };
+    setMembers(prev => [...prev, newMember]);
+  };
+
+  const handleDeleteMember = (memberId: string) => {
+    // Remove member
+    setMembers(prev => prev.filter(m => m.id !== memberId));
+    // Remove all transactions associated with this member
+    setTransactions(prev => prev.filter(t => t.memberId !== memberId));
+  };
 
   const NavItem = ({ view, icon: Icon, label }: { view: ViewState; icon: any; label: string }) => (
     <button
@@ -71,8 +149,21 @@ function App() {
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-8 overflow-y-auto h-[calc(100vh-64px)] md:h-screen">
         <div className="max-w-7xl mx-auto animate-fade-in-up">
-          {currentView === ViewState.DASHBOARD && <FinanceManager showContributionForm={false} />}
-          {currentView === ViewState.FINANCE && <FinanceManager showContributionForm={true} />}
+          {currentView === ViewState.DASHBOARD && (
+             <FinanceManager 
+                showContributionForm={false} 
+                data={financeData}
+             />
+          )}
+          {currentView === ViewState.FINANCE && (
+            <FinanceManager 
+                showContributionForm={true} 
+                data={financeData}
+                onRecordPayment={handleRecordPayment}
+                onAddMember={handleAddMember}
+                onDeleteMember={handleDeleteMember}
+            />
+          )}
           {currentView === ViewState.BUDGET && <BudgetManager />}
           {currentView === ViewState.MINUTES && (
             <MinutesManager 
