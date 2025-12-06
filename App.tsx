@@ -30,19 +30,17 @@ const DEFAULT_MEMBERS: FinancialMember[] = [
   { id: '19', name: 'Joshua Kekana', previousArrears: 0, contributionDue: 500 },
 ];
 
-const ElephantHeadIcon = ({ className }: { className?: string }) => (
+const AppLogo = ({ className }: { className?: string }) => (
   <svg 
     xmlns="http://www.w3.org/2000/svg" 
     viewBox="0 0 24 24" 
     fill="currentColor"
     className={className}
   >
-     <path d="M18.5,4c-1.5,0-2.8,0.7-3.7,1.8C13.9,4.7,12.6,4,11.1,4C8.3,4,6,6.2,6,9c0,2.1,1.3,3.9,3.1,4.6
-	c-0.2,0.9-0.5,1.9-1.1,2.8c-0.9,1.4-2.5,2.1-4,1.7v1.9c3.1,0.5,5.9-1.3,7.4-4.2c0.3-0.6,0.5-1.2,0.7-1.9c0.2,0.7,0.4,1.3,0.7,1.9
-	c1.5,2.9,4.4,4.7,7.4,4.2v-1.9c-1.6,0.4-3.1-0.3-4-1.7c-0.6-0.9-0.9-1.9-1.1-2.8c1.8-0.7,3.1-2.5,3.1-4.6
-	C21.6,6.2,19.3,4,18.5,4z"/>
-    <circle cx="9.5" cy="9" r="1.2" fill="white" />
-    <circle cx="15.5" cy="9" r="1.2" fill="white" />
+     <path d="M20.5,6.5c-1.8-1.5-4.2-2.1-6.5-1.6c-2.9,0.7-5,3.1-5.4,6.1c-0.1,0.6,0,1.3,0.2,1.9c-1.1,0.4-2.2,0.9-3.1,1.8
+	c-1.1,1.2-1.6,2.9-1.5,4.5v0.6h2.2v-0.6c0-1.1,0.5-2,1.4-2.6c0.9-0.6,2-0.5,3-0.1l0.7,4.5h2.5l0.4-3.1h2.1l0.4,3.1h2.5l-0.8-5
+	c1.5-0.9,2.4-2.5,2.5-4.2C21.6,10,21.6,8.1,20.5,6.5z M16.5,10.5c-0.8,0-1.5-0.7-1.5-1.5s0.7-1.5,1.5-1.5s1.5,0.7,1.5,1.5
+	S17.3,10.5,16.5,10.5z"/>
   </svg>
 );
 
@@ -139,7 +137,7 @@ function App() {
       }}
       className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
         currentView === view
-          ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+          ? 'bg-blue-900 text-white shadow-md shadow-blue-200'
           : 'text-slate-600 hover:bg-slate-100'
       }`}
     >
@@ -153,7 +151,7 @@ function App() {
       {/* Mobile Header */}
       <div className="md:hidden bg-white border-b p-4 flex justify-between items-center sticky top-0 z-20">
         <div className="flex items-center gap-2">
-            <ElephantHeadIcon className="w-8 h-8 text-blue-900" />
+            <AppLogo className="w-8 h-8 text-[#8B2635]" />
             <div className="font-bold text-xl text-blue-900 tracking-tight">Karara Family Club</div>
         </div>
         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-600">
@@ -169,7 +167,7 @@ function App() {
       `}>
         <div className="p-6 border-b border-slate-100 hidden md:block">
           <div className="flex items-center gap-2 mb-2">
-            <ElephantHeadIcon className="w-8 h-8 text-blue-900" />
+            <AppLogo className="w-8 h-8 text-[#8B2635]" />
             <div className="font-bold text-lg text-blue-900 tracking-tight leading-tight">Karara<br/>Family Club</div>
           </div>
           <p className="text-xs text-slate-400">Smart Management System</p>
@@ -185,8 +183,8 @@ function App() {
         </nav>
         
         <div className="p-4 border-t border-slate-100 space-y-4">
-            <div className="bg-blue-50 rounded-xl p-4">
-                <p className="text-xs font-semibold text-blue-800 uppercase mb-2">Next Meeting</p>
+            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                <p className="text-xs font-semibold text-blue-900 uppercase mb-2">Next Meeting</p>
                 <p className="text-sm font-medium text-slate-800 whitespace-pre-wrap">{nextMeeting}</p>
             </div>
             
