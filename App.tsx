@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { LayoutDashboard, FileText, PieChart, FolderOpen, MessageSquare, Menu, X, Calculator } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { LayoutDashboard, FileText, PieChart, FolderOpen, MessageSquare, Menu, X, Calculator, RefreshCw } from 'lucide-react';
 import { FinanceManager } from './components/FinanceManager';
 import { MinutesManager } from './components/MinutesManager';
 import { DocumentAnalyzer } from './components/DocumentAnalyzer';
@@ -7,47 +7,61 @@ import { BudgetManager } from './components/BudgetManager';
 import { AIChat } from './components/AIChat';
 import { ViewState, Transaction, FinancialMember } from './types';
 
+// Default members list (Clean state)
+const DEFAULT_MEMBERS: FinancialMember[] = [
+  { id: '1', name: 'Bafana Kekana', previousArrears: 0, contributionDue: 500 },
+  { id: '2', name: 'Steve Kgamane', previousArrears: 0, contributionDue: 500 },
+  { id: '3', name: 'Mokgoshi Kekana', previousArrears: 0, contributionDue: 500 },
+  { id: '4', name: 'Columbus Kekana', previousArrears: 0, contributionDue: 500 },
+  { id: '5', name: 'Archie Poto', previousArrears: 0, contributionDue: 500 },
+  { id: '6', name: 'John Rabalago', previousArrears: 0, contributionDue: 500 },
+  { id: '7', name: 'Darlington Masalesa', previousArrears: 0, contributionDue: 500 },
+  { id: '8', name: 'Kamogelo Kekana', previousArrears: 0, contributionDue: 500 },
+  { id: '9', name: 'Lucas Lekgoathi', previousArrears: 0, contributionDue: 500 },
+  { id: '10', name: 'Bongani Maphoso', previousArrears: 0, contributionDue: 500 },
+  { id: '11', name: 'Lucas Kekana', previousArrears: 0, contributionDue: 500 },
+  { id: '12', name: 'Thatego Themane', previousArrears: 0, contributionDue: 500 },
+  { id: '13', name: 'Klaas Legoabe', previousArrears: 0, contributionDue: 500 },
+  { id: '14', name: 'Oupa Tladi', previousArrears: 0, contributionDue: 500 },
+  { id: '15', name: 'James Kekana', previousArrears: 0, contributionDue: 500 },
+  { id: '16', name: 'Moditi Rabalao', previousArrears: 0, contributionDue: 500 },
+  { id: '17', name: 'Shakes Kekana', previousArrears: 0, contributionDue: 500 },
+  { id: '18', name: 'Ephraim Rabalao', previousArrears: 0, contributionDue: 500 },
+  { id: '19', name: 'Joshua Kekana', previousArrears: 0, contributionDue: 500 },
+];
+
 function App() {
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [nextMeeting, setNextMeeting] = useState("The Smiths Home, Oct 24, 14:00 PM");
 
-  // Mock Database - In a real app this would come from an API/Google Sheets
-  const [members, setMembers] = useState<FinancialMember[]>([
-    { id: '1', name: 'Bafana Kekana', previousArrears: 0, contributionDue: 500 },
-    { id: '2', name: 'Steve Kgamane', previousArrears: 0, contributionDue: 500 },
-    { id: '3', name: 'Mokgoshi Kekana', previousArrears: 0, contributionDue: 500 },
-    { id: '4', name: 'Columbus Kekana', previousArrears: 0, contributionDue: 500 },
-    { id: '5', name: 'Archie Poto', previousArrears: 0, contributionDue: 500 },
-    { id: '6', name: 'John Rabalago', previousArrears: 0, contributionDue: 500 },
-    { id: '7', name: 'Darlington Masalesa', previousArrears: 0, contributionDue: 500 },
-    { id: '8', name: 'Kamogelo Kekana', previousArrears: 0, contributionDue: 500 },
-    { id: '9', name: 'Lucas Lekgoathi', previousArrears: 0, contributionDue: 500 },
-    { id: '10', name: 'Bongani Maphoso', previousArrears: 0, contributionDue: 500 },
-    { id: '11', name: 'Lucas Kekana', previousArrears: 0, contributionDue: 500 },
-    { id: '12', name: 'Thatego Themane', previousArrears: 0, contributionDue: 500 },
-    { id: '13', name: 'Klaas Legoabe', previousArrears: 0, contributionDue: 500 },
-    { id: '14', name: 'Oupa Tladi', previousArrears: 0, contributionDue: 500 },
-    { id: '15', name: 'James Kekana', previousArrears: 0, contributionDue: 500 },
-    { id: '16', name: 'Moditi Rabalao', previousArrears: 0, contributionDue: 500 },
-    { id: '17', name: 'Shakes Kekana', previousArrears: 0, contributionDue: 500 },
-    { id: '18', name: 'Ephraim Rabalao', previousArrears: 0, contributionDue: 500 },
-    { id: '19', name: 'Joshua Kekana', previousArrears: 0, contributionDue: 500 },
-  ]);
+  // State initialization with Persistence Logic
+  const [members, setMembers] = useState<FinancialMember[]>(() => {
+    const saved = localStorage.getItem('fc_members');
+    return saved ? JSON.parse(saved) : DEFAULT_MEMBERS;
+  });
 
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    { 
-      id: '101', memberId: '1', memberName: 'Bafana Kekana', date: '2023-10-01', timestamp: '2023-10-01T10:00:00.000Z',
-      cashPaid: 0, eftPaid: 500, totalPaid: 500, previousArrears: 0, currentArrears: 0, category: 'Contribution' 
-    }
-  ]);
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    const saved = localStorage.getItem('fc_transactions');
+    // Initialize as EMPTY array to solve the dummy data issue
+    return saved ? JSON.parse(saved) : []; 
+  });
+
+  // Effects to save data whenever it changes
+  useEffect(() => {
+    localStorage.setItem('fc_members', JSON.stringify(members));
+  }, [members]);
+
+  useEffect(() => {
+    localStorage.setItem('fc_transactions', JSON.stringify(transactions));
+  }, [transactions]);
 
   // Derived Financial Stats
   const totalCollected = transactions.reduce((acc, curr) => acc + curr.totalPaid, 0);
   const totalArrears = members.reduce((acc, curr) => acc + curr.previousArrears, 0); 
   const activeMembers = members.length;
-  // Calculate collection rate (mock logic for demo)
-  const collectionRate = Math.round((transactions.length / members.length) * 100) || 0;
+  // Calculate collection rate
+  const collectionRate = members.length > 0 ? Math.round((transactions.length / members.length) * 100) : 0;
 
   const financeData = {
     totalCollected,
@@ -89,6 +103,16 @@ function App() {
     setMembers(prev => prev.filter(m => m.id !== memberId));
     // Remove all transactions associated with this member
     setTransactions(prev => prev.filter(t => t.memberId !== memberId));
+  };
+
+  const handleResetData = () => {
+    if (confirm("Are you sure you want to delete all financial data and reset the app? This cannot be undone.")) {
+      localStorage.removeItem('fc_members');
+      localStorage.removeItem('fc_transactions');
+      setMembers(DEFAULT_MEMBERS);
+      setTransactions([]);
+      window.location.reload();
+    }
   };
 
   const NavItem = ({ view, icon: Icon, label }: { view: ViewState; icon: any; label: string }) => (
@@ -138,11 +162,18 @@ function App() {
           <NavItem view={ViewState.CHAT} icon={MessageSquare} label="AI Assistant" />
         </nav>
         
-        <div className="p-4 border-t border-slate-100">
+        <div className="p-4 border-t border-slate-100 space-y-4">
             <div className="bg-blue-50 rounded-xl p-4">
                 <p className="text-xs font-semibold text-blue-800 uppercase mb-2">Next Meeting</p>
                 <p className="text-sm font-medium text-slate-800 whitespace-pre-wrap">{nextMeeting}</p>
             </div>
+            
+            <button 
+              onClick={handleResetData}
+              className="w-full flex items-center justify-center gap-2 text-xs text-slate-400 hover:text-red-500 transition px-2 py-1"
+            >
+              <RefreshCw className="w-3 h-3" /> Reset App Data
+            </button>
         </div>
       </aside>
 

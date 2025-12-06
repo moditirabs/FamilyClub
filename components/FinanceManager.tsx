@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
-import { Wallet, TrendingUp, Users, AlertCircle, Coins, Plus, Save, UserPlus, X, Trash2, ArrowUpDown, Download, AlertTriangle } from 'lucide-react';
+import { Wallet, TrendingUp, Users, AlertCircle, Coins, Plus, Save, UserPlus, X, Trash2, ArrowUpDown, Download, AlertTriangle, Banknote } from 'lucide-react';
 import { Transaction, FinancialMember } from '../types';
 
 interface FinanceManagerProps {
@@ -71,8 +71,41 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
   const eftVal = parseFloat(eftPaid) || 0;
   const totalPaid = cashVal + eftVal;
 
+  // Calculate Total Cash Collected for Dashboard View
+  const totalCashCollected = useMemo(() => {
+    return data.transactions.reduce((acc, t) => acc + (t.cashPaid || 0), 0);
+  }, [data.transactions]);
+
+  // Filter Logic: Show only latest transaction per member for current month
+  const filteredTransactions = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const latestMap = new Map<string, Transaction>();
+
+    data.transactions.forEach(t => {
+      const tDate = new Date(t.timestamp || t.date);
+      // Scope: Current Month & Year
+      if (tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) {
+        // De-duplicate: Keep only the latest by timestamp
+        const existing = latestMap.get(t.memberId);
+        if (!existing) {
+          latestMap.set(t.memberId, t);
+        } else {
+           const tTime = tDate.getTime();
+           const existingTime = new Date(existing.timestamp || existing.date).getTime();
+           if (tTime > existingTime) {
+             latestMap.set(t.memberId, t);
+           }
+        }
+      }
+    });
+
+    return Array.from(latestMap.values());
+  }, [data.transactions]);
+
   // Ledger Sorting Logic
-  const sortedTransactions = [...data.transactions].sort((a, b) => {
+  const sortedTransactions = [...filteredTransactions].sort((a, b) => {
     let aVal: any = a[sortConfig.key as keyof Transaction];
     let bVal: any = b[sortConfig.key as keyof Transaction];
 
@@ -242,55 +275,77 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                 </div>
             </div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between">
-                <div>
-                    <p className="text-sm text-slate-500">Active Members</p>
-                    <h3 className="text-2xl font-bold text-slate-900">{data.activeMembers}</h3>
-                </div>
-                <div className="p-2 bg-purple-100 rounded-full text-purple-600">
-                    <Users className="w-5 h-5" />
+        
+        {/* Conditional 4th Card: Dashboard = Active Members | Financials = Cash Collected */}
+        {!showContributionForm ? (
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <p className="text-sm text-slate-500">Active Members</p>
+                        <h3 className="text-2xl font-bold text-slate-900">{data.activeMembers}</h3>
+                    </div>
+                    <div className="p-2 bg-purple-100 rounded-full text-purple-600">
+                        <Users className="w-5 h-5" />
+                    </div>
                 </div>
             </div>
-        </div>
+        ) : (
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <p className="text-sm text-slate-500">Cash Collected</p>
+                        <h3 className="text-2xl font-bold text-emerald-600">R{totalCashCollected.toLocaleString()}</h3>
+                    </div>
+                    <div className="p-2 bg-emerald-100 rounded-full text-emerald-600">
+                        <Banknote className="w-5 h-5" />
+                    </div>
+                </div>
+            </div>
+        )}
       </div>
 
       {/* Dashboard View: Show Charts / Hide Form */}
       {!showContributionForm && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-[350px] flex flex-col relative min-w-0">
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col relative min-w-0">
             <h3 className="text-lg font-semibold mb-4 text-slate-800">Collection Status</h3>
-            <div className="flex-1 relative min-h-0">
-                <div className="absolute inset-0">
-                    <ResponsiveContainer width="99%" height="100%">
-                    <PieChart>
-                        <Pie
-                        data={dataPie}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        fill="#8884d8"
-                        paddingAngle={5}
-                        dataKey="value"
-                        >
-                        {dataPie.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend verticalAlign="bottom" height={36}/>
-                    </PieChart>
-                    </ResponsiveContainer>
-                </div>
+            <div className="w-full h-[250px]">
+                {data.totalCollected === 0 && data.totalArrears === 0 ? (
+                   <div className="h-full flex items-center justify-center text-slate-400">
+                     No data available
+                   </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                          <Pie
+                          data={[
+                            { name: 'Collected', value: data.totalCollected },
+                            { name: 'Arrears', value: data.totalArrears },
+                          ]}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          fill="#8884d8"
+                          paddingAngle={5}
+                          dataKey="value"
+                          >
+                          {dataPie.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend verticalAlign="bottom" height={36}/>
+                      </PieChart>
+                  </ResponsiveContainer>
+                )}
             </div>
             </div>
 
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-[350px] flex flex-col relative min-w-0">
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col relative min-w-0">
             <h3 className="text-lg font-semibold mb-4 text-slate-800">Monthly Contribution Trends</h3>
-            <div className="flex-1 relative min-h-0">
-                <div className="absolute inset-0">
-                    <ResponsiveContainer width="99%" height="100%">
+            <div className="w-full h-[250px]">
+                <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                         data={dataBar}
                         margin={{
@@ -307,8 +362,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                         <Bar dataKey="collected" fill="#10b981" name="Collected" radius={[4, 4, 0, 0]} />
                         <Bar dataKey="expected" fill="#e2e8f0" name="Expected" radius={[4, 4, 0, 0]} />
                     </BarChart>
-                    </ResponsiveContainer>
-                </div>
+                </ResponsiveContainer>
             </div>
             </div>
         </div>
@@ -445,7 +499,7 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
             {/* Ledger Table */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-slate-100 bg-slate-50 flex flex-wrap justify-between items-center gap-4">
-                    <h3 className="font-semibold text-slate-700">Transaction Ledger</h3>
+                    <h3 className="font-semibold text-slate-700">Transaction Ledger <span className="text-xs font-normal text-slate-500 ml-2">(Current Month Only)</span></h3>
                     <button 
                         onClick={exportToCSV}
                         className="flex items-center gap-2 text-sm text-slate-600 hover:text-blue-600 bg-white border border-slate-200 hover:border-blue-200 px-3 py-1.5 rounded transition"
@@ -477,7 +531,13 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
                         <tbody className="divide-y divide-slate-100">
                             {sortedTransactions.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="px-6 py-8 text-center text-slate-400">No transactions recorded yet.</td>
+                                    <td colSpan={7} className="px-6 py-12 text-center text-slate-400 bg-slate-50/50">
+                                      <div className="flex flex-col items-center justify-center gap-2">
+                                        <Wallet className="w-8 h-8 opacity-20" />
+                                        <p>No transactions recorded for this month.</p>
+                                        <p className="text-xs opacity-60">Use the form above to record payment.</p>
+                                      </div>
+                                    </td>
                                 </tr>
                             ) : (
                                 sortedTransactions.map((t) => {
