@@ -37,10 +37,7 @@ const AppLogo = ({ className }: { className?: string }) => (
     fill="currentColor"
     className={className}
   >
-     <path d="M20.5,6.5c-1.8-1.5-4.2-2.1-6.5-1.6c-2.9,0.7-5,3.1-5.4,6.1c-0.1,0.6,0,1.3,0.2,1.9c-1.1,0.4-2.2,0.9-3.1,1.8
-	c-1.1,1.2-1.6,2.9-1.5,4.5v0.6h2.2v-0.6c0-1.1,0.5-2,1.4-2.6c0.9-0.6,2-0.5,3-0.1l0.7,4.5h2.5l0.4-3.1h2.1l0.4,3.1h2.5l-0.8-5
-	c1.5-0.9,2.4-2.5,2.5-4.2C21.6,10,21.6,8.1,20.5,6.5z M16.5,10.5c-0.8,0-1.5-0.7-1.5-1.5s0.7-1.5,1.5-1.5s1.5,0.7,1.5,1.5
-	S17.3,10.5,16.5,10.5z"/>
+     <path d="M16 5c0-1.66-1.34-3-3-3c-1.31 0-2.42.83-2.83 2H9C6.24 4 4 6.24 4 9c0 .48.07.95.19 1.4C2.98 11.11 2.02 12.44 2 14c0 2.21 1.79 4 4 4h2v2c0 .83.67 1.5 1.5 1.5h1c.83 0 1.5-.67 1.5-1.5V18h4v2.5c0 .83.67 1.5 1.5 1.5h1c.83 0 1.5-.67 1.5-1.5V14c0-2.21-1.79-4-4-4h-.5C15.8 9.4 16 8.73 16 8V5z"/>
   </svg>
 );
 
@@ -137,7 +134,7 @@ function App() {
       }}
       className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
         currentView === view
-          ? 'bg-blue-900 text-white shadow-md shadow-blue-200'
+          ? 'bg-blue-900 text-white shadow-md shadow-blue-900/20'
           : 'text-slate-600 hover:bg-slate-100'
       }`}
     >
