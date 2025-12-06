@@ -30,6 +30,22 @@ const DEFAULT_MEMBERS: FinancialMember[] = [
   { id: '19', name: 'Joshua Kekana', previousArrears: 0, contributionDue: 500 },
 ];
 
+const ElephantHeadIcon = ({ className }: { className?: string }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    viewBox="0 0 24 24" 
+    fill="currentColor"
+    className={className}
+  >
+     <path d="M18.5,4c-1.5,0-2.8,0.7-3.7,1.8C13.9,4.7,12.6,4,11.1,4C8.3,4,6,6.2,6,9c0,2.1,1.3,3.9,3.1,4.6
+	c-0.2,0.9-0.5,1.9-1.1,2.8c-0.9,1.4-2.5,2.1-4,1.7v1.9c3.1,0.5,5.9-1.3,7.4-4.2c0.3-0.6,0.5-1.2,0.7-1.9c0.2,0.7,0.4,1.3,0.7,1.9
+	c1.5,2.9,4.4,4.7,7.4,4.2v-1.9c-1.6,0.4-3.1-0.3-4-1.7c-0.6-0.9-0.9-1.9-1.1-2.8c1.8-0.7,3.1-2.5,3.1-4.6
+	C21.6,6.2,19.3,4,18.5,4z"/>
+    <circle cx="9.5" cy="9" r="1.2" fill="white" />
+    <circle cx="15.5" cy="9" r="1.2" fill="white" />
+  </svg>
+);
+
 function App() {
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -136,7 +152,10 @@ function App() {
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
       {/* Mobile Header */}
       <div className="md:hidden bg-white border-b p-4 flex justify-between items-center sticky top-0 z-20">
-        <div className="font-bold text-xl text-blue-900 tracking-tight">FamilyClub OS</div>
+        <div className="flex items-center gap-2">
+            <ElephantHeadIcon className="w-8 h-8 text-blue-900" />
+            <div className="font-bold text-xl text-blue-900 tracking-tight">Karara Family Club</div>
+        </div>
         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-600">
           {isMobileMenuOpen ? <X /> : <Menu />}
         </button>
@@ -149,8 +168,11 @@ function App() {
         flex flex-col
       `}>
         <div className="p-6 border-b border-slate-100 hidden md:block">
-          <div className="font-bold text-2xl text-blue-900 tracking-tight">FamilyClub OS</div>
-          <p className="text-xs text-slate-400 mt-1">Smart Management System</p>
+          <div className="flex items-center gap-2 mb-2">
+            <ElephantHeadIcon className="w-8 h-8 text-blue-900" />
+            <div className="font-bold text-lg text-blue-900 tracking-tight leading-tight">Karara<br/>Family Club</div>
+          </div>
+          <p className="text-xs text-slate-400">Smart Management System</p>
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">

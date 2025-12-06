@@ -1,5 +1,5 @@
 {
-  "name": "FamilyClub OS",
+  "name": "Karara Family Club",
   "description": "A comprehensive family club management system featuring AI-powered minutes generation, financial tracking with visualization, document analysis, and an intelligent assistant for club queries.",
   "requestFramePermissions": [
     "microphone",
