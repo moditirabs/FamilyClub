@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 
 const apiKey = process.env.API_KEY || '';
@@ -150,8 +149,11 @@ export const sendMessageToAssistant = async (
         if (chunk.web) {
           searchLinks.push({ uri: chunk.web.uri, title: chunk.web.title });
         }
-        if (chunk.maps) {
-           mapLinks.push({ uri: chunk.maps.googleMapsItem.metadata.placeUri, title: chunk.maps.googleMapsItem.place.name });
+        if (chunk.maps?.googleMapsItem?.metadata?.placeUri) {
+           mapLinks.push({ 
+             uri: chunk.maps.googleMapsItem.metadata.placeUri, 
+             title: chunk.maps.googleMapsItem.place?.name || "Map Location" 
+           });
         }
       });
     }
