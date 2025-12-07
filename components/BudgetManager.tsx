@@ -1,17 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState, useRef } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Plus, Trash2, Search, TrendingUp, TrendingDown, PiggyBank, X, FileDown, Lock, Calendar, Filter } from 'lucide-react';
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import html2canvas from "html2canvas";
+import { BudgetTransaction } from '../types';
 
-interface BudgetTransaction {
-  id: number;
-  type: 'income' | 'expense';
-  amount: number;
-  description: string;
-  category: string;
-  date: string;
+interface BudgetManagerProps {
+    transactions: BudgetTransaction[];
+    onUpdateTransactions: (transactions: BudgetTransaction[]) => void;
 }
 
 const CATEGORIES = {
@@ -19,18 +17,7 @@ const CATEGORIES = {
   expense: ['Housing', 'Food', 'Transport', 'Utilities', 'Entertainment', 'Healthcare', 'Education', 'Debt', 'Other']
 };
 
-export const BudgetManager: React.FC = () => {
-  // Load initial state from localStorage
-  const [transactions, setTransactions] = useState<BudgetTransaction[]>(() => {
-    const saved = localStorage.getItem('budget_transactions');
-    const parsed = saved ? JSON.parse(saved) : [];
-    // Migration for old data without category
-    return parsed.map((t: any) => ({
-      ...t,
-      category: t.category || 'Uncategorized'
-    }));
-  });
-
+export const BudgetManager: React.FC<BudgetManagerProps> = ({ transactions, onUpdateTransactions }) => {
   const [filter, setFilter] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'income' | 'expense'>('income');
@@ -49,11 +36,6 @@ export const BudgetManager: React.FC = () => {
   });
   const chartRef = useRef<HTMLDivElement>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-
-  // Persist to localStorage whenever transactions change
-  useEffect(() => {
-    localStorage.setItem('budget_transactions', JSON.stringify(transactions));
-  }, [transactions]);
 
   // Calculations
   const totalIncome = transactions
@@ -86,13 +68,13 @@ export const BudgetManager: React.FC = () => {
       date: new Date().toLocaleDateString(),
     };
 
-    setTransactions([newTransaction, ...transactions]);
+    onUpdateTransactions([newTransaction, ...transactions]);
     setFormData({ amount: '', description: '', category: '' });
     setIsModalOpen(false);
   };
 
   const handleDelete = (id: number) => {
-    setTransactions(transactions.filter(t => t.id !== id));
+    onUpdateTransactions(transactions.filter(t => t.id !== id));
   };
 
   const openModal = (type: 'income' | 'expense') => {

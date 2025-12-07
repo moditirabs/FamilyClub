@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
-import { Wallet, TrendingUp, Users, AlertCircle, Coins, Plus, Save, UserPlus, X, Trash2, ArrowUpDown, Download, AlertTriangle, Banknote } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ReferenceLine } from 'recharts';
+import { Wallet, TrendingUp, Users, AlertCircle, Coins, Plus, Save, UserPlus, X, Trash2, ArrowUpDown, Download, AlertTriangle, Banknote, BarChart3, TrendingDown } from 'lucide-react';
 import { Transaction, FinancialMember } from '../types';
 
 interface FinanceManagerProps {
@@ -13,34 +13,64 @@ interface FinanceManagerProps {
     transactions: Transaction[];
     members: FinancialMember[];
   };
+  memberCounts: Record<string, number>; // Maps YYYY-MM to number of active members
   onRecordPayment?: (transaction: Transaction) => void;
   onAddMember?: (name: string) => void;
   onDeleteMember?: (memberId: string) => void;
 }
 
 const COLORS = ['#10b981', '#ef4444'];
-
-// Mock data for dashboard charts (unchanged logic)
-const dataPie = [
-  { name: 'Collected', value: 8500 },
-  { name: 'Arrears', value: 1500 },
-];
-
-const dataBar = [
-  { name: 'Jan', collected: 2000, expected: 2500 },
-  { name: 'Feb', collected: 2200, expected: 2500 },
-  { name: 'Mar', collected: 1800, expected: 2500 },
-  { name: 'Apr', collected: 2500, expected: 2500 },
-];
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 type SortConfig = {
   key: keyof Transaction | 'date_time'; // 'date_time' is a virtual key for sorting by timestamp
   direction: 'asc' | 'desc';
 };
 
+// Custom Tooltip for the Enhanced Bar Chart
+const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const isSurplus = data.difference >= 0;
+      
+      return (
+        <div className="bg-white p-4 border border-slate-200 shadow-lg rounded-xl z-50 min-w-[200px]">
+          <h4 className="font-bold text-slate-800 mb-2 border-b border-slate-100 pb-2">{label}</h4>
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between items-center gap-4">
+               <span className="text-slate-500 flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-600"/> Collected:</span>
+               <span className="font-semibold text-blue-700">R{data.collected.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center gap-4">
+               <span className="text-slate-500 flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-orange-400"/> Expected:</span>
+               <span className="font-semibold text-slate-600">R{data.expected.toLocaleString()}</span>
+            </div>
+             <div className="flex justify-between items-center gap-4">
+               <span className="text-slate-500">Active Members:</span>
+               <span className="font-medium text-slate-800">{data.activeMembers}</span>
+            </div>
+            <div className="pt-2 mt-2 border-t border-slate-100 flex justify-between items-center font-medium">
+               <span className={isSurplus ? "text-green-600" : "text-red-500"}>
+                 {isSurplus ? "Surplus" : "Deficit"}
+               </span>
+               <span className={isSurplus ? "text-green-600" : "text-red-600"}>
+                 {isSurplus ? "+" : ""}R{data.difference.toLocaleString()}
+               </span>
+            </div>
+             <div className="text-xs text-right text-slate-400 mt-1">
+               Rate: {data.rate}%
+             </div>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
 export const FinanceManager: React.FC<FinanceManagerProps> = ({ 
   showContributionForm = true,
   data,
+  memberCounts,
   onRecordPayment,
   onAddMember,
   onDeleteMember
@@ -76,7 +106,63 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
     return data.transactions.reduce((acc, t) => acc + (t.cashPaid || 0), 0);
   }, [data.transactions]);
 
-  // Filter Logic: Show only latest transaction per member for current month
+  // --- DYNAMIC CHART DATA GENERATION ---
+  const { chartData } = useMemo(() => {
+    if (data.transactions.length === 0) {
+        return { chartData: [] };
+    }
+
+    const months = new Set<string>();
+    // Collect all unique months from transaction history
+    data.transactions.forEach(t => {
+        // Handle both ISO timestamp and YYYY-MM-DD
+        const dateStr = t.timestamp ? t.timestamp : t.date;
+        months.add(dateStr.slice(0, 7)); // YYYY-MM
+    });
+    
+    // Ensure current month is always displayed even if empty
+    const currentMonthKey = new Date().toISOString().slice(0, 7);
+    months.add(currentMonthKey);
+
+    // Convert Set to Array and Sort Chronologically
+    const sortedMonths = Array.from(months).sort();
+
+    // Map to chart data structure
+    const mappedData = sortedMonths.map(month => {
+        const [year, monthIndex] = month.split('-');
+        
+        // 1. Calculate Collected for this month
+        const monthlyTransactions = data.transactions.filter(t => {
+             const tDate = t.timestamp ? t.timestamp : t.date;
+             return tDate.startsWith(month);
+        });
+        const collected = monthlyTransactions.reduce((sum, t) => sum + t.totalPaid, 0);
+
+        // 2. Determine Active Members
+        // Use historical snapshot from App.tsx or fallback to current if not found (e.g. older data)
+        const activeCount = memberCounts[month] || data.members.length;
+
+        // 3. Calculate Expected
+        const expected = activeCount * 500;
+
+        return {
+            monthKey: month,
+            name: `${MONTH_NAMES[parseInt(monthIndex) - 1]} ${year.slice(2)}`, // "Oct 24"
+            fullDate: `${MONTH_NAMES[parseInt(monthIndex) - 1]} ${year}`,
+            collected,
+            expected,
+            activeMembers: activeCount,
+            difference: collected - expected,
+            rate: expected > 0 ? Math.round((collected / expected) * 100) : 0
+        };
+    });
+
+    return { 
+        chartData: mappedData
+    };
+  }, [data.transactions, data.members.length, memberCounts]);
+
+  // Filter Logic for Ledger: Show only latest transaction per member for current month
   const filteredTransactions = useMemo(() => {
     const now = new Date();
     const currentMonth = now.getMonth();
@@ -306,65 +392,130 @@ export const FinanceManager: React.FC<FinanceManagerProps> = ({
 
       {/* Dashboard View: Show Charts / Hide Form */}
       {!showContributionForm && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
+            
+            {/* Overall Distribution Pie Chart (MOVED TO TOP) */}
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col relative min-w-0">
-            <h3 className="text-lg font-semibold mb-4 text-slate-800">Collection Status</h3>
-            <div className="w-full h-[250px]">
-                {data.totalCollected === 0 && data.totalArrears === 0 ? (
-                   <div className="h-full flex items-center justify-center text-slate-400">
-                     No data available
-                   </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                          <Pie
-                          data={[
-                            { name: 'Collected', value: data.totalCollected },
-                            { name: 'Arrears', value: data.totalArrears },
-                          ]}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={100}
-                          fill="#8884d8"
-                          paddingAngle={5}
-                          dataKey="value"
-                          >
-                          {dataPie.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                          </Pie>
-                          <Tooltip />
-                          <Legend verticalAlign="bottom" height={36}/>
-                      </PieChart>
-                  </ResponsiveContainer>
-                )}
-            </div>
+                <h3 className="text-lg font-semibold mb-4 text-slate-800">Overall Collection Distribution</h3>
+                <div className="w-full h-[300px]">
+                    {data.totalCollected === 0 && data.totalArrears === 0 ? (
+                    <div className="h-full flex items-center justify-center text-slate-400">
+                        No data available
+                    </div>
+                    ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie
+                            data={[
+                                { name: 'Collected', value: data.totalCollected },
+                                { name: 'Arrears', value: data.totalArrears },
+                            ]}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={80}
+                            outerRadius={110}
+                            fill="#8884d8"
+                            paddingAngle={5}
+                            dataKey="value"
+                            >
+                            {data.members.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                            </Pie>
+                            <Tooltip formatter={(value: number) => `R${value.toLocaleString()}`} />
+                            <Legend verticalAlign="bottom" height={36} iconType="circle"/>
+                        </PieChart>
+                    </ResponsiveContainer>
+                    )}
+                </div>
             </div>
 
+            {/* Collection Status Bar Chart (MOVED TO BOTTOM) */}
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col relative min-w-0">
-            <h3 className="text-lg font-semibold mb-4 text-slate-800">Monthly Contribution Trends</h3>
-            <div className="w-full h-[250px]">
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                        data={dataBar}
-                        margin={{
-                        top: 5,
-                        right: 30,
-                        left: 20,
-                        bottom: 5,
-                        }}
-                    >
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend verticalAlign="bottom" height={36}/>
-                        <Bar dataKey="collected" fill="#10b981" name="Collected" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="expected" fill="#e2e8f0" name="Expected" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                </ResponsiveContainer>
+                <h3 className="text-lg font-semibold mb-4 text-slate-800 flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-slate-500" />
+                    Collection Status & Trends
+                </h3>
+                
+                {chartData.length > 0 ? (
+                    <div className="w-full h-[350px] mb-4">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                                data={chartData}
+                                margin={{ top: 10, right: 10, left: 10, bottom: 5 }}
+                                barSize={24} // 30% thinner than standard
+                            >
+                                <defs>
+                                    <pattern id="stripe-pattern" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)">
+                                        <rect width="2" height="4" transform="translate(0,0)" fill="white" opacity={0.3} />
+                                    </pattern>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                <XAxis 
+                                    dataKey="name" 
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#64748b', fontSize: 12 }}
+                                    dy={10}
+                                />
+                                <YAxis 
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#64748b', fontSize: 12 }}
+                                    tickFormatter={(value) => `R${value}`}
+                                />
+                                <Tooltip content={<CustomTooltip />} cursor={{fill: 'transparent'}} />
+                                <Legend 
+                                    verticalAlign="top" 
+                                    align="right" 
+                                    height={36} 
+                                    iconType="circle"
+                                    formatter={(value) => <span className="text-slate-600 text-sm font-medium ml-1">{value}</span>}
+                                />
+                                <Bar 
+                                    dataKey="collected" 
+                                    name="Collected" 
+                                    radius={[4, 4, 0, 0]}
+                                    animationDuration={1500}
+                                >
+                                    {chartData.map((entry, index) => (
+                                        <Cell 
+                                            key={`cell-${index}`} 
+                                            fill={entry.collected >= entry.expected ? '#16a34a' : '#2563eb'} 
+                                        />
+                                    ))}
+                                </Bar>
+                                <Bar 
+                                    dataKey="expected" 
+                                    name="Expected" 
+                                    fill="#f97316" 
+                                    radius={[4, 4, 0, 0]}
+                                    fillOpacity={0.8}
+                                />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                ) : (
+                    // EMPTY STATE
+                    <div className="flex flex-col items-center justify-center h-full text-center p-8 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
+                        <div className="bg-slate-100 p-4 rounded-full mb-4">
+                            <BarChart3 className="w-10 h-10 text-slate-300" />
+                        </div>
+                        <h4 className="text-lg font-bold text-slate-700">No collection data available</h4>
+                        <p className="text-sm text-slate-500 mt-2 mb-6 max-w-[250px]">
+                            Add member contributions to see visualization of your club's financial performance.
+                        </p>
+                        {/* Visual Cue - kept minimal */}
+                        <div className="flex gap-2 mb-6 opacity-40 grayscale">
+                             <div className="w-4 h-12 bg-blue-400 rounded-t"></div>
+                             <div className="w-4 h-16 bg-orange-400 rounded-t"></div>
+                             <div className="w-4 h-8 bg-blue-400 rounded-t"></div>
+                             <div className="w-4 h-20 bg-orange-400 rounded-t"></div>
+                        </div>
+                    </div>
+                )}
             </div>
-            </div>
+
         </div>
       )}
 

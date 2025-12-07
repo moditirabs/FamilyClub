@@ -1,3 +1,4 @@
+
 export interface Member {
   id: string;
   name: string;
@@ -24,6 +25,27 @@ export interface Transaction {
   previousArrears: number; // Snapshot at time of payment
   currentArrears: number; // Result after payment
   category: 'Contribution' | 'Fine' | 'Other';
+}
+
+export interface BudgetTransaction {
+  id: number;
+  type: 'income' | 'expense';
+  amount: number;
+  description: string;
+  category: string;
+  date: string;
+}
+
+export interface ExtractedTransaction {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  memberName: string | null;
+  paymentMethod: 'Cash' | 'EFT';
+  type: 'Contribution' | 'Other';
+  status: 'Verified' | 'Needs Review';
+  matchedMemberId?: string; // ID of the member if matched
 }
 
 export interface Meeting {
