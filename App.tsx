@@ -1,12 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, FileText, PieChart, FolderOpen, MessageSquare, Menu, X, Calculator, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, FileText, PieChart, FolderOpen, MessageSquare, Menu, X, Calculator, RefreshCw, LogOut, Loader2, User } from 'lucide-react';
 import { FinanceManager } from './components/FinanceManager';
 import { MinutesManager } from './components/MinutesManager';
 import { DocumentAnalyzer } from './components/DocumentAnalyzer';
 import { BudgetManager } from './components/BudgetManager';
 import { AIChat } from './components/AIChat';
-import { ViewState, Transaction, FinancialMember, ExtractedTransaction, BudgetTransaction } from './types';
+import { Auth } from './components/Auth';
+import { ViewState, Transaction, FinancialMember, ExtractedTransaction, BudgetTransaction, AppUser } from './types';
+import { auth, onAuthStateChanged, signOut } from './services/firebase';
 
 // Default members list (Clean state)
 const DEFAULT_MEMBERS: FinancialMember[] = [
@@ -43,6 +44,9 @@ const AppLogo = ({ className }: { className?: string }) => (
 );
 
 function App() {
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [nextMeeting, setNextMeeting] = useState("The Smiths Home, Oct 24, 14:00 PM");
@@ -58,7 +62,7 @@ function App() {
     return saved ? JSON.parse(saved) : []; 
   });
 
-  // Budget Transactions State (Lifted from BudgetManager)
+  // Budget Transactions State
   const [budgetTransactions, setBudgetTransactions] = useState<BudgetTransaction[]>(() => {
     const saved = localStorage.getItem('budget_transactions');
     const parsed = saved ? JSON.parse(saved) : [];
@@ -68,11 +72,43 @@ function App() {
     }));
   });
 
-  // Track historical member counts for accurate "Expected" calculations
+  // Track historical member counts
   const [memberCounts, setMemberCounts] = useState<Record<string, number>>(() => {
     const saved = localStorage.getItem('fc_member_counts');
     return saved ? JSON.parse(saved) : {};
   });
+
+  // --- FIREBASE AUTH LISTENER ---
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        if (firebaseUser) {
+            // User is signed in.
+            setUser({
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                displayName: firebaseUser.displayName,
+                photoURL: firebaseUser.photoURL
+            });
+            setCurrentView(ViewState.DASHBOARD);
+        } else {
+            // User is signed out.
+            setUser(null);
+        }
+        setAuthLoading(false);
+    });
+
+    // Cleanup subscription
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+      try {
+        await signOut(auth);
+        // State update handled by onAuthStateChanged
+      } catch (error) {
+          console.error("Error signing out", error);
+      }
+  };
 
   // Effects to save data whenever it changes
   useEffect(() => {
@@ -87,20 +123,16 @@ function App() {
     localStorage.setItem('budget_transactions', JSON.stringify(budgetTransactions));
   }, [budgetTransactions]);
 
-  // Update member counts for the current month whenever members list changes
   useEffect(() => {
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
     setMemberCounts(prev => {
-        // Only update if count has changed to avoid unnecessary writes
         if (prev[currentMonth] === members.length) return prev;
-        
         const updated = { ...prev, [currentMonth]: members.length };
         localStorage.setItem('fc_member_counts', JSON.stringify(updated));
         return updated;
     });
   }, [members]);
 
-  // Handle body scroll lock when mobile menu is open
   useEffect(() => {
     if (isMobileMenuOpen) {
       document.body.style.overflow = 'hidden';
@@ -116,7 +148,6 @@ function App() {
   const totalCollected = transactions.reduce((acc, curr) => acc + curr.totalPaid, 0);
   const totalArrears = members.reduce((acc, curr) => acc + curr.previousArrears, 0); 
   const activeMembers = members.length;
-  // Calculate collection rate
   const collectionRate = members.length > 0 ? Math.round((transactions.length / members.length) * 100) : 0;
 
   const financeData = {
@@ -236,32 +267,61 @@ function App() {
     </button>
   );
 
+  // --- RENDERING ---
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader2 className="w-10 h-10 text-blue-900 animate-spin" />
+      </div>
+    );
+  }
+
+  // Auth Guard: If no user, show Auth Component
+  if (!user) {
+    return <Auth />;
+  }
+
+  // Dashboard / Main App Layout
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row relative">
       {/* Mobile Header */}
-      <div className="md:hidden bg-white border-b p-4 flex justify-between items-center sticky top-0 z-50">
+      <div className="md:hidden bg-white border-b p-4 flex justify-between items-center sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-2">
             <AppLogo className="w-8 h-8 text-[#8B2635]" />
-            <div className="font-bold text-xl text-blue-900 tracking-tight">Karara Family Club</div>
+            <div className="font-bold text-xl text-blue-900 tracking-tight">Karara Club</div>
         </div>
-        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-600">
-          {isMobileMenuOpen ? <X /> : <Menu />}
-        </button>
+        <div className="flex items-center gap-3">
+            {/* User Profile in Header for Mobile */}
+            <div className="flex items-center gap-2 bg-slate-50 rounded-full pr-3 pl-1 py-1 border border-slate-100">
+                {user.photoURL ? (
+                    <img src={user.photoURL} alt="Profile" className="w-6 h-6 rounded-full object-cover" />
+                ) : (
+                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-700">
+                        <User className="w-3 h-3" />
+                    </div>
+                )}
+                 <span className="text-xs font-medium text-slate-700 max-w-[80px] truncate">{user.displayName || 'User'}</span>
+            </div>
+            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-600">
+                {isMobileMenuOpen ? <X /> : <Menu />}
+            </button>
+        </div>
       </div>
 
       {/* Backdrop for Mobile Menu */}
       {isMobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          style={{ top: '64px' }}
+          style={{ top: '70px' }} // Adjusted for header height
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       {/* Sidebar Navigation */}
       <aside className={`
-        fixed md:sticky md:top-0 h-[calc(100vh-64px)] md:h-screen w-64 bg-white border-r border-slate-200 z-50 transition-transform duration-300 ease-in-out
-        ${isMobileMenuOpen ? 'translate-x-0 top-[64px]' : '-translate-x-full md:translate-x-0'}
+        fixed md:sticky md:top-0 h-[calc(100vh-70px)] md:h-screen w-64 bg-white border-r border-slate-200 z-50 transition-transform duration-300 ease-in-out
+        ${isMobileMenuOpen ? 'translate-x-0 top-[70px]' : '-translate-x-full md:translate-x-0'}
         flex flex-col
       `}>
         <div className="p-6 border-b border-slate-100 hidden md:block">
@@ -270,6 +330,25 @@ function App() {
             <div className="font-bold text-lg text-blue-900 tracking-tight leading-tight">Karara<br/>Family Club</div>
           </div>
           <p className="text-xs text-slate-400">Smart Management System</p>
+          
+          {/* User Profile Widget in Desktop Sidebar */}
+          <div className="mt-6 pt-4 border-t border-slate-50 flex items-center gap-3">
+             <div className="shrink-0">
+                 {user.photoURL ? (
+                     <img src={user.photoURL} alt="Profile" className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm" />
+                 ) : (
+                     <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 border-2 border-white shadow-sm">
+                         <User className="w-5 h-5" />
+                     </div>
+                 )}
+             </div>
+             <div className="overflow-hidden">
+                <p className="text-xs text-slate-400 mb-0.5">Welcome,</p>
+                <p className="text-sm font-semibold text-slate-700 truncate" title={user.displayName || user.email || ''}>
+                    {user.displayName || 'Member'}
+                </p>
+             </div>
+          </div>
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
@@ -288,6 +367,13 @@ function App() {
             </div>
             
             <button 
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 rounded-lg transition text-sm font-medium"
+            >
+              <LogOut className="w-4 h-4" /> Log Out
+            </button>
+
+            <button 
               onClick={handleResetData}
               className="w-full flex items-center justify-center gap-2 text-xs text-slate-400 hover:text-red-500 transition px-2 py-1"
             >
@@ -297,7 +383,7 @@ function App() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto h-[calc(100vh-64px)] md:h-screen z-0">
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto h-[calc(100vh-70px)] md:h-screen z-0">
         <div className="max-w-7xl mx-auto animate-fade-in-up">
           {currentView === ViewState.DASHBOARD && (
              <FinanceManager 
